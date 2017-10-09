@@ -3,6 +3,9 @@
 
 #define HTTPDVER "0.4"
 
+#include <c_types.h>
+#include "platform.h"
+
 //Max length of request head. This is statically allocated for each connection.
 #define HTTPD_MAX_HEAD_LEN		1024
 //Max post buffer len. This is dynamically malloc'ed if needed.

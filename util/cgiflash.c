@@ -11,18 +11,25 @@ Some flash handling cgi routines. Used for updating the ESPFS/OTA image.
  * ----------------------------------------------------------------------------
  */
 
+#include <string.h>
+
 //This doesn't work yet on the ESP32. ToDo: figure out how to make it work.
 #ifndef ESP32
 
-#include <esp8266.h>
-#include "cgiflash.h"
-#include "espfs.h"
-#include "cgiflash.h"
-#include "espfs.h"
-
+#include <etstimer.h>
+#include <espressif/esp_timer.h>
+#include <espressif/user_interface.h>
+#include <espressif/spi_flash.h>
+#include <espressif/osapi.h>
 //#include <osapi.h>
-#include "cgiflash.h"
-#include "espfs.h"
+
+#ifdef RBOOT_OTA
+#include "rboot-api.h"
+#endif
+
+#include <libesphttpd/cgiflash.h>
+#include <libesphttpd/espfs.h>
+#include <libesphttpd/cgiflash.h>
 
 #ifndef UPGRADE_FLAG_FINISH
 #define UPGRADE_FLAG_FINISH     0x02
@@ -50,14 +57,14 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
-	uint8 id = system_upgrade_userbin_check();
+	uint8 id = sdk_system_upgrade_userbin_check();
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Content-Type", "text/plain");
 	httpdHeader(connData, "Content-Length", "9");
 	httpdEndHeaders(connData);
 	char *next = id == 1 ? "user1.bin" : "user2.bin";
 	httpdSend(connData, next, -1);
-	httpd_printf("Next firmware: %s (got %d)\n", next, id);
+	printf("Next firmware: %s (got %d)\n", next, id);
 	return HTTPD_CGI_DONE;
 }
 
@@ -100,6 +107,10 @@ typedef struct __attribute__((packed)) {
 	int32_t len2;
 } OtaHeader;
 
+#ifdef RBOOT_OTA
+    rboot_config bootconf;
+    rboot_write_status rboot_status;
+#endif
 
 int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	CgiUploadFlashDef *def=(CgiUploadFlashDef*)connData->cgiArg;
@@ -115,10 +126,10 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	if (state==NULL) {
 		//First call. Allocate and initialize state variable.
-		httpd_printf("Firmware upload cgi start.\n");
+		printf("Firmware upload cgi start.\n");
 		state=malloc(sizeof(UploadState));
 		if (state==NULL) {
-			httpd_printf("Can't allocate firmware upload struct!\n");
+			printf("Can't allocate firmware upload struct!\n");
 			return HTTPD_CGI_DONE;
 		}
 		memset(state, 0, sizeof(UploadState));
@@ -129,6 +140,8 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	
 	char *data=connData->post->buff;
 	int dataLen=connData->post->buffLen;
+
+    uint8_t slot;
 	
 	while (dataLen!=0) {
 		if (state->state==FLST_START) {
@@ -139,11 +152,11 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 				strncpy(buff, h->tag, 27);
 				buff[27]=0;
 				if (strcmp(buff, def->tagName)!=0) {
-					httpd_printf("OTA tag mismatch! Current=`%s` uploaded=`%s`.\n",
+					printf("OTA tag mismatch! Current=`%s` uploaded=`%s`.\n",
 										def->tagName, buff);
 					len=httpdFindArg(connData->getArgs, "force", buff, sizeof(buff));
 					if (len!=-1 && atoi(buff)) {
-						httpd_printf("Forcing firmware flash.\n");
+						printf("Forcing firmware flash.\n");
 					} else {
 						state->err="Firmware not intended for this device!\n";
 						state->state=FLST_ERROR;
@@ -157,19 +170,32 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 					//Flash header seems okay.
 					dataLen-=sizeof(OtaHeader); //skip header when parsing data
 					data+=sizeof(OtaHeader);
-					if (system_upgrade_userbin_check()==1) {
-						httpd_printf("Flashing user1.bin from ota image\n");
+#ifdef RBOOT_OTA
+                    bootconf = rboot_get_config();
+                    slot = bootconf.current_rom;
+                    //state->address=bootconf.roms[slot];
+#else
+                    slot = sdk_system_upgrade_userbin_check();
+#endif
+                    if (slot==1) {
+						printf("Flashing user1.bin from ota image\n");
 						state->len=h->len1;
 						state->skip=h->len2;
 						state->state=FLST_WRITE;
 						state->address=def->fw1Pos;
 					} else {
-						httpd_printf("Flashing user2.bin from ota image\n");
+						printf("Flashing user2.bin from ota image\n");
 						state->len=h->len2;
 						state->skip=h->len1;
 						state->state=FLST_SKIP;
 						state->address=def->fw2Pos;
 					}
+#ifdef RBOOT_OTA
+                    slot = slot == 1 ? 0 : 1;
+                    printf("Flashing slot %i\n", slot);
+                    rboot_status = rboot_write_init(bootconf.roms[slot]);
+                    //rboot_write_init(state->address);
+#endif
 				}
 			} else if (def->type==CGIFLASH_TYPE_FW && checkBinHeader(connData->post->buff)) {
 				if (connData->post->len > def->fwSize) {
@@ -192,7 +218,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 			} else {
 				state->err="Invalid flash image type!";
 				state->state=FLST_ERROR;
-				httpd_printf("Did not recognize flash image type!\n");
+				printf("Did not recognize flash image type!\n");
 			}
 		} else if (state->state==FLST_SKIP) {
 			//Skip bytes without doing anything with them
@@ -227,12 +253,20 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 				state->pagePos+=lenLeft;
 				state->len-=lenLeft;
 				//Erase sector, if needed
+#ifdef RBOOT_OTA
+				//printf("Writing %d bytes of data to SPI...\n", state->pagePos);
+                if (!rboot_write_flash(&rboot_status, (uint8 *)state->pageData, state->pagePos)) {
+					state->err="Error writing to flash";
+					state->state=FLST_ERROR;
+                }
+#else
 				if ((state->address&(SPI_FLASH_SEC_SIZE-1))==0) {
-					spi_flash_erase_sector(state->address/SPI_FLASH_SEC_SIZE);
+					sdk_spi_flash_erase_sector(state->address/SPI_FLASH_SEC_SIZE);
 				}
 				//Write page
-				//httpd_printf("Writing %d bytes of data to SPI pos 0x%x...\n", state->pagePos, state->address);
-				spi_flash_write(state->address, (uint32 *)state->pageData, state->pagePos);
+				//printf("Writing %d bytes of data to SPI pos 0x%x...\n", state->pagePos, state->address);
+				sdk_spi_flash_write(state->address, (uint32 *)state->pageData, state->pagePos);
+#endif
 				state->address+=PAGELEN;
 				state->pagePos=0;
 				if (state->len==0) {
@@ -241,7 +275,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 				}
 			}
 		} else if (state->state==FLST_DONE) {
-			httpd_printf("Huh? %d bogus bytes received after data received.\n", dataLen);
+			printf("Huh? %d bogus bytes received after data received.\n", dataLen);
 			//Ignore those bytes.
 			dataLen=0;
 		} else if (state->state==FLST_ERROR) {
@@ -252,7 +286,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	
 	if (connData->post->len==connData->post->received) {
 		//We're done! Format a response.
-		httpd_printf("Upload done. Sending response.\n");
+		printf("Upload done. Sending response.\n");
 		httpdStartResponse(connData, state->state==FLST_ERROR?400:200);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		httpdEndHeaders(connData);
@@ -260,7 +294,11 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 			httpdSend(connData, "Firmware image error:", -1);
 			httpdSend(connData, state->err, -1);
 			httpdSend(connData, "\n", -1);
-		}
+#ifdef RBOOT_OTA
+		} else {
+            bootconf.current_rom = bootconf.current_rom == 0 ? 1 : 0;
+#endif
+        }
 		free(state);
 		return HTTPD_CGI_DONE;
 	}
@@ -270,11 +308,12 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 
 
-static os_timer_t resetTimer;
+static ETSTimer resetTimer;
 
 static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
-	system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
-	system_upgrade_reboot();
+	sdk_system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+    rboot_set_config(&bootconf);
+	sdk_system_upgrade_reboot();
 }
 
 // Handle request to reboot into the new firmware
@@ -288,9 +327,9 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	// valid firmware
 
 	//Do reboot in a timer callback so we still have time to send the response.
-	os_timer_disarm(&resetTimer);
-	os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-	os_timer_arm(&resetTimer, 200, 0);
+	sdk_os_timer_disarm(&resetTimer);
+	sdk_os_timer_setfn(&resetTimer, resetTimerCb, NULL);
+	sdk_os_timer_arm(&resetTimer, 200, 0);
 
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Content-Type", "text/plain");

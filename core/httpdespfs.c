@@ -11,9 +11,12 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
  * ----------------------------------------------------------------------------
  */
 
-#include <esp8266.h>
-#include "httpdespfs.h"
-#include "espfs.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <libesphttpd/httpdespfs.h>
+#include <libesphttpd/espfs.h>
 #include "espfsformat.h"
 
 // The static files marked with FLAG_GZIP are compressed and will be served with GZIP compression.
@@ -134,7 +137,7 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 			return HTTPD_CGI_NOTFOUND;
 		}
 		if (espFsFlags(tpd->file) & FLAG_GZIP) {
-			httpd_printf("cgiEspFsTemplate: Trying to use gzip-compressed file %s as template!\n", connData->url);
+			printf("cgiEspFsTemplate: Trying to use gzip-compressed file %s as template!\n", connData->url);
 			espFsClose(tpd->file);
 			free(tpd);
 			return HTTPD_CGI_NOTFOUND;
