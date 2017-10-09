@@ -16,7 +16,7 @@ the internal webserver.
 */
 
 #include <string.h>
-#include <c_types.h>
+#include <stdint.h>
 #include <espressif/esp_wifi.h>
 
 #include <esp8266.h>

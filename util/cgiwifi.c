@@ -13,7 +13,7 @@ Cgi/template routines for the /wifi url.
 
 #include <string.h>
 #include <stdio.h>
-#include <c_types.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <etstimer.h>
 #include <espressif/osapi.h>
