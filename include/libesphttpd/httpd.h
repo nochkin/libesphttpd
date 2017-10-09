@@ -3,7 +3,7 @@
 
 #define HTTPDVER "0.4"
 
-#include <c_types.h>
+#include <stdint.h>
 #include "platform.h"
 
 //Max length of request head. This is statically allocated for each connection.

@@ -63,7 +63,7 @@ typedef struct {
 
 //The mappings from file extensions to mime types. If you need an extra mime type,
 //add it here.
-static const ICACHE_RODATA_ATTR MimeMap mimeTypes[]={
+static const MimeMap mimeTypes[]={
 	{"htm", "text/htm"},
 	{"html", "text/html"},
 	{"css", "text/css"},
