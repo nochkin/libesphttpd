@@ -19,7 +19,7 @@ the internal webserver.
 #include <stdint.h>
 #include <espressif/esp_wifi.h>
 
-#include <esp8266.h>
+#include <libesphttpd/platform.h>
 #ifdef FREERTOS
 
 #include "FreeRTOS.h"
@@ -307,7 +307,7 @@ static void captdnsTask(void *pvParameters) {
 	while(1) {
 		memset(&from, 0, sizeof(from));
 		fromlen=sizeof(struct sockaddr_in);
-		ret=recvfrom(sockFd, (u8 *)udp_msg, DNS_LEN, 0,(struct sockaddr *)&from,(socklen_t *)&fromlen);
+		ret=recvfrom(sockFd, (uint8 *)udp_msg, DNS_LEN, 0,(struct sockaddr *)&from,(socklen_t *)&fromlen);
 		if (ret>0) captdnsRecv(&from,udp_msg,ret);
 	}
 	

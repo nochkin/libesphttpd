@@ -58,11 +58,11 @@ static ETSTimer resetTimer;
 
 //Callback the code calls when a wlan ap scan is done. Basically stores the result in
 //the cgiWifiAps struct.
-void wifiScanDoneCb(void *arg, STATUS status) {
+void wifiScanDoneCb(void *arg, sdk_scan_status_t status) {
 	int n;
 	struct sdk_bss_info *bss_link = (struct sdk_bss_info *)arg;
 	printf("wifiScanDoneCb %d\n", status);
-	if (status!=OK) {
+	if (status!=SCAN_OK) {
 		cgiWifiAps.scanInProgress=0;
 		return;
 	}
