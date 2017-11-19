@@ -210,7 +210,7 @@ espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 clean:
 	$(Q) rm -f $(LIB)
 	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
-	$(Q) make -C espfs/mkespfsimage/ clean
+	$(Q) $(MAKE) -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
 	$(Q) rm -f webpages.espfs libwebpages-espfs.a
 ifeq ("$(COMPRESS_W_YUI)","yes")
