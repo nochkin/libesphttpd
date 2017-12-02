@@ -185,9 +185,15 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 						state->address=def->fw1Pos;
 					} else {
 						printf("Flashing user2.bin from ota image\n");
+#ifdef RBOOT_OTA
+						state->len=h->len1;
+						state->skip=h->len2;
+						state->state=FLST_WRITE;
+#else
 						state->len=h->len2;
 						state->skip=h->len1;
 						state->state=FLST_SKIP;
+#endif
 						state->address=def->fw2Pos;
 					}
 #ifdef RBOOT_OTA
