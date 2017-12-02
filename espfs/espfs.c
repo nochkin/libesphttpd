@@ -41,6 +41,10 @@ typedef unsigned int        uint32;
 #include "heatshrink_decoder.h"
 #endif
 
+#ifdef RBOOT_OTA
+#include "rboot-api.h"
+#endif
+
 static char* espFsData = NULL;
 
 
@@ -77,7 +81,13 @@ a memory exception, crashing the program.
 #define FLASH_BASE_ADDR 0x40040000
 #endif
 
+#ifdef RBOOT_OTA
+EspFsInitResult espFsInit(void *_flashAddress) {
+	rboot_config bootconf = rboot_get_config();
+	uint32_t flashAddress = (uint32_t)_flashAddress + bootconf.roms[bootconf.current_rom] - 0x2000;
+#else
 EspFsInitResult espFsInit(void *flashAddress) {
+#endif
 	if((uint32_t)flashAddress > 0x40000000) {
 		flashAddress = (void*)((uint32_t)flashAddress-FLASH_BASE_ADDR);
 	}

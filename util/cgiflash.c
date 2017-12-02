@@ -57,7 +57,12 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
+#ifdef RBOOT_OTA
+	rboot_config bootconf = rboot_get_config();
+	uint8 id = bootconf.current_rom;
+#else
 	uint8 id = sdk_system_upgrade_userbin_check();
+#endif
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Content-Type", "text/plain");
 	httpdHeader(connData, "Content-Length", "9");
@@ -176,7 +181,6 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
                     //state->address=bootconf.roms[slot];
 #else
                     slot = sdk_system_upgrade_userbin_check();
-#endif
                     if (slot==1) {
 						printf("Flashing user1.bin from ota image\n");
 						state->len=h->len1;
@@ -190,7 +194,11 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 						state->state=FLST_SKIP;
 						state->address=def->fw2Pos;
 					}
+#endif
 #ifdef RBOOT_OTA
+						state->len=h->len1;
+						state->skip=h->len2;
+						state->state=FLST_WRITE;
                     slot = slot == 1 ? 0 : 1;
                     printf("Flashing slot %i\n", slot);
                     rboot_status = rboot_write_init(bootconf.roms[slot]);
