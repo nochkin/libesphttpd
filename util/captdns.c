@@ -214,13 +214,36 @@ static void captdnsRecv(struct sockaddr_in *premote_addr, char *pusrdata, unsign
 			setn16(&rf->class, QCLASS_IN);
 			setn32(&rf->ttl, 0);
 			setn16(&rf->rdlength, 4); //IPv4 addr is 4 bytes;
-			//Grab the current IP of the softap interface
-			struct ip_info info;
-			sdk_wifi_get_ip_info(SOFTAP_IF, &info);
-			*rend++=ip4_addr1(&info.ip);
-			*rend++=ip4_addr2(&info.ip);
-			*rend++=ip4_addr3(&info.ip);
-			*rend++=ip4_addr4(&info.ip);
+			/*
+			 * Captive portal addresses:
+			 *
+			 * Apple iOS: 	http://captive.apple.com/hotspot-detect.html
+			 * Android:	http://clients3.google.com/generate_204
+			 * Android 5+:	http://connectivitycheck.android.com/generate_204
+			 * Windows:	http://www.msftncsi.com/ncsi.txt
+			 * Windows 10:	http://www.msftconnecttest.com/redirect
+			 *
+			 * If so, return current IP, otherwise return 0.0.0.0
+			 */
+			if ((strcmp(buff, "captive.apple.com")==0) || (strcmp(buff, "clients3.google.com")==0) || (strcmp(buff, "connectivitycheck.android.com")==0) || (strcmp(buff, "www.msftncsi.com")==0) || (strcmp(buff, "www.msftconnecttest.com")==0)) {
+				//Grab the current IP of the softap interface
+				struct ip_info info;
+				sdk_wifi_get_ip_info(SOFTAP_IF, &info);
+				*rend++=ip4_addr1(&info.ip);
+				*rend++=ip4_addr2(&info.ip);
+				*rend++=ip4_addr3(&info.ip);
+				*rend++=ip4_addr4(&info.ip);
+			} else if(strcmp(buff, "dns.msftncsi.com")==0) {
+				*rend++=131;
+				*rend++=107;
+				*rend++=255;
+				*rend++=255;
+			} else {
+				*rend++=0;
+				*rend++=0;
+				*rend++=0;
+				*rend++=0;
+			}
 			setn16(&rhdr->ancount, my_ntohs(&rhdr->ancount)+1);
 //			printf("Added A rec to resp. Resp len is %d\n", (rend-reply));
 		} else if (my_ntohs(&qf->type)==QTYPE_NS) {
