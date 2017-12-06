@@ -84,7 +84,7 @@ a memory exception, crashing the program.
 #ifdef RBOOT_OTA
 EspFsInitResult espFsInit(void *_flashAddress) {
 	rboot_config bootconf = rboot_get_config();
-	uint32_t flashAddress = (uint32_t)_flashAddress + bootconf.roms[bootconf.current_rom] - 0x2000;
+	void *flashAddress = (void*)_flashAddress + bootconf.roms[bootconf.current_rom] - 0x2000;
 #else
 EspFsInitResult espFsInit(void *flashAddress) {
 #endif
