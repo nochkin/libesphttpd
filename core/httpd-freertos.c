@@ -8,6 +8,7 @@ Thanks to my collague at Espressif for writing the foundations of this code.
 
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <esp8266.h>
 #include <libesphttpd/httpd.h>

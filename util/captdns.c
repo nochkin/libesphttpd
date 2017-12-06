@@ -17,6 +17,7 @@ the internal webserver.
 
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <espressif/esp_wifi.h>
 
 #include <libesphttpd/platform.h>
