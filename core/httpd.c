@@ -741,7 +741,7 @@ void ICACHE_FLASH_ATTR httpdRecvCb(ConnTypePtr rconn, char *remIp, int remPort, 
 					httpdProcessRequest(conn);
 				}
 			}
-		} else if (conn->post->len!=0) {
+		} else if (conn->post->buff && conn->post->len!=0) {
 			//This byte is a POST byte.
 			conn->post->buff[conn->post->buffLen++]=data[x];
 			conn->post->received++;
@@ -773,7 +773,8 @@ void ICACHE_FLASH_ATTR httpdRecvCb(ConnTypePtr rconn, char *remIp, int remPort, 
 				}
 				break; //ignore rest of data, recvhdl has parsed it.
 			} else {
-				printf("Eh? Got unexpected data from client. %s\n", data);
+				// printf("Eh? Got unexpected data from client. %s\n", data);
+				printf("Eh? Got unexpected data from client.\n");
 			}
 		}
 	}
@@ -818,6 +819,11 @@ int ICACHE_FLASH_ATTR httpdConnectCb(ConnTypePtr conn, char *remIp, int remPort)
 	}
 	memset(connData[i], 0, sizeof(HttpdConnData));
 	connData[i]->priv=malloc(sizeof(HttpdPriv));
+	if (connData[i]->priv==NULL) {
+		printf("Out of memory allocating connData priv struct!\n");
+		httpdPlatUnlock();
+		return 0;
+	}
 	memset(connData[i]->priv, 0, sizeof(HttpdPriv));
 	connData[i]->conn=conn;
 	connData[i]->slot=i;

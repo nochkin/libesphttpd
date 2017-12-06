@@ -41,6 +41,10 @@ typedef unsigned int        uint32;
 #include "heatshrink_decoder.h"
 #endif
 
+#ifdef RBOOT_OTA
+#include "rboot-api.h"
+#endif
+
 static char* espFsData = NULL;
 
 
@@ -77,7 +81,13 @@ a memory exception, crashing the program.
 #define FLASH_BASE_ADDR 0x40040000
 #endif
 
+#ifdef RBOOT_OTA
+EspFsInitResult espFsInit(void *_flashAddress) {
+	rboot_config bootconf = rboot_get_config();
+	uint32_t flashAddress = (uint32_t)_flashAddress + bootconf.roms[bootconf.current_rom] - 0x2000;
+#else
 EspFsInitResult espFsInit(void *flashAddress) {
+#endif
 	if((uint32_t)flashAddress > 0x40000000) {
 		flashAddress = (void*)((uint32_t)flashAddress-FLASH_BASE_ADDR);
 	}
@@ -220,12 +230,15 @@ int espFsRead(EspFsFile *fh, char *buff, int len) {
 		return len;
 #ifdef ESPFS_HEATSHRINK
 	} else if (fh->decompressor==COMPRESS_HEATSHRINK) {
-		readFlashUnaligned((char*)&fdlen, (char*)&fh->header->fileLenDecomp, 4);
 		int decoded=0;
 		size_t elen, rlen;
 		char ebuff[16];
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 //		printf("Alloc %p\n", dec);
+		if (dec == NULL) {
+			return 0;
+		}
+		readFlashUnaligned((char*)&fdlen, (char*)&fh->header->fileLenDecomp, 4);
 		if (fh->posDecomp == fdlen) {
 			return 0;
 		}
@@ -271,7 +284,8 @@ void espFsClose(EspFsFile *fh) {
 #ifdef ESPFS_HEATSHRINK
 	if (fh->decompressor==COMPRESS_HEATSHRINK) {
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
-		heatshrink_decoder_free(dec);
+		if (dec)
+			heatshrink_decoder_free(dec);
 //		printf("Freed %p\n", dec);
 	}
 #endif
