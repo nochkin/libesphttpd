@@ -19,7 +19,7 @@ Esp8266 http server - core routines
 #include "httpd-platform.h"
 
 //This gets set at init time.
-static HttpdBuiltInUrl *builtInUrls;
+static const HttpdBuiltInUrl *builtInUrls;
 
 typedef struct HttpSendBacklogItem HttpSendBacklogItem;
 
@@ -850,7 +850,7 @@ int ICACHE_FLASH_ATTR httpdConnectCb(ConnTypePtr conn, char *remIp, int remPort)
 }
 
 //Httpd initialization routine. Call this to kick off webserver functionality.
-void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
+void ICACHE_FLASH_ATTR httpdInit(const HttpdBuiltInUrl *fixedUrls, int port) {
 	int i;
 
 	for (i=0; i<HTTPD_MAX_CONNECTIONS; i++) {
