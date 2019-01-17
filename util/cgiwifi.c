@@ -138,7 +138,7 @@ int cgiWiFiScan(HttpdConnData *connData) {
 	if (!cgiWifiAps.scanInProgress && pos!=0) {
 		//Fill in json code for an access point
 		if (pos-1<cgiWifiAps.noAps) {
-			len=sprintf(buff, "{\"essid\": \"%s\", \"bssid\": \"" MACSTR "\", \"rssi\": \"%d\", \"enc\": \"%d\", \"channel\": \"%d\"}%s\n",
+			len=sprintf(buff, "{\"essid\": \"%.32s\", \"bssid\": \"" MACSTR "\", \"rssi\": \"%d\", \"enc\": \"%d\", \"channel\": \"%d\"}%s\n",
 					cgiWifiAps.apData[pos-1]->ssid, MAC2STR(cgiWifiAps.apData[pos-1]->bssid), cgiWifiAps.apData[pos-1]->rssi,
 					cgiWifiAps.apData[pos-1]->enc, cgiWifiAps.apData[pos-1]->channel, (pos-1==cgiWifiAps.noAps-1)?"":",");
 			httpdSend(connData, buff, len);
